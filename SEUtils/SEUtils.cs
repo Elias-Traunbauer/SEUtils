@@ -37,7 +37,6 @@ namespace IngameScript
             private static string name = "";
             private static bool setupDone = false;
             private static Dictionary<int, IEnumerator<ICoroutineInfo>> coroutines;
-            private static Dictionary<int, Func<bool>> waitingCoroutines;
             private static bool statusDisplay = true;
             private static int coroutineCounter = 0;
 
@@ -51,7 +50,6 @@ namespace IngameScript
             {
                 SEUtils.statusDisplay = statusDisplay;
                 coroutines = new Dictionary<int, IEnumerator<ICoroutineInfo>>();
-                waitingCoroutines = new Dictionary<int, Func<bool>>();
                 invokeNextUpdateActions = new List<Action>();
                 invokeTimeActions = new List<WaitingInvokeInfo>();
                 MyGridProgram = scriptBaseClass;
@@ -97,6 +95,29 @@ namespace IngameScript
                 InvokeTime(UpdatePBScreen, 1000);
             }
 
+            private static void WaitingCoroutineStep(WaitForConditionMet conditionChecker, int enumeratorId)
+            {
+                if (conditionChecker.condition())
+                {
+                    InvokeNextUpdate(() => CoroutineStep(enumeratorId));
+                }
+                else
+                {
+                    if (conditionChecker.timeout != -1 && (DateTime.Now - conditionChecker.started).TotalMilliseconds >= conditionChecker.timeout)
+                    {
+                        InvokeNextUpdate(() => CoroutineStep(enumeratorId));
+                    }
+                    if (conditionChecker.checkInterval == -1)
+                    {
+                        InvokeNextUpdate(() => WaitingCoroutineStep(conditionChecker, enumeratorId));
+                    }
+                    else
+                    {
+                        InvokeTime(() => WaitingCoroutineStep(conditionChecker, enumeratorId), conditionChecker.checkInterval);
+                    }
+                }
+            }
+
             private static void CoroutineStep(int enumeratorId)
             {
                 var enumerator = coroutines[enumeratorId];
@@ -117,20 +138,13 @@ namespace IngameScript
                         var milliseconds = (waitInstruction as WaitForMilliseconds).milliseconds;
                         InvokeTime(() => CoroutineStep(enumeratorId), milliseconds);
                     }
-                    else if (waitInstruction is WaitForConditionMet)
+                    else if (waitInstruction is IConditionChecker)
                     {
-                        if ((waitInstruction as WaitForConditionMet).condition())
-                        {
-                            InvokeNextUpdate(() => CoroutineStep(enumeratorId));
-                        }
-                        else
-                        {
-                            waitingCoroutines.Add(enumeratorId, (waitInstruction as WaitForConditionMet).condition);
-                        }
+                        WaitingCoroutineStep(waitInstruction as WaitForConditionMet, enumeratorId);
                     }
                     else
                     {
-                        MyGridProgram.Echo("ERROR");
+                        MyGridProgram.Echo("Unknown coroutine waiting instruction");
                     }
                 }
                 else
@@ -151,7 +165,6 @@ namespace IngameScript
             public static void StopCoroutine(int enumeratorId)
             {
                 coroutines.Remove(enumeratorId);
-                waitingCoroutines.Remove(enumeratorId);
             }
 
             /// <summary>
@@ -194,15 +207,6 @@ namespace IngameScript
             public static void RuntimeUpdate(string argument, UpdateType updateSource)
             {
                 CheckSetup();
-                var wc = waitingCoroutines.ToDictionary(x => x.Key, y => y.Value);
-                foreach (var item in wc)
-                {
-                    if (item.Value())
-                    {
-                        waitingCoroutines.Remove(item.Key);
-                        CoroutineStep(item.Key);
-                    }
-                }
                 if (updateSource == UpdateType.Update1 || updateSource == UpdateType.Update10 || updateSource == UpdateType.Update100)
                 {
                     var nextUp = invokeNextUpdateActions.ToArray();
@@ -251,10 +255,14 @@ namespace IngameScript
         /// </summary>
         public class WaitForNextTick : ICoroutineInfo
         {
-            public WaitForNextTick()
-            {
 
-            }
+        }
+
+        public interface IConditionChecker
+        {
+            DateTime started { get; set; }
+            int checkInterval { get; set; }
+            int timeout { get; set; }
         }
 
         /// <summary>
@@ -273,13 +281,44 @@ namespace IngameScript
         /// <summary>
         /// Waits at least for the next tick, but waits for the condition to be true
         /// </summary>
-        public class WaitForConditionMet : ICoroutineInfo
+        public class WaitForConditionMet : ICoroutineInfo, IConditionChecker
         {
             public Func<bool> condition;
 
-            public WaitForConditionMet(Func<bool> action)
+            public WaitForConditionMet(Func<bool> action, int timeoutMilliseconds = -1, int checkIntervalMilliseconds = -1)
             {
                 condition = action;
+                timeout = timeoutMilliseconds;
+                checkInterval = checkIntervalMilliseconds;
+                started = DateTime.Now;
+            }
+
+            public DateTime started
+            {
+                get;
+                set;
+            }
+
+            public int checkInterval
+            {
+                get;
+
+                set;
+            }
+
+            public int timeout
+            {
+                get;
+
+                set;
+            }
+        }
+
+        public class WaitForValueEqual<T> : WaitForConditionMet, ICoroutineInfo, IConditionChecker where T : IComparable
+        {
+            public WaitForValueEqual(Func<T> action, T value, int timeoutMilliseconds = -1, int checkIntervalMilliseconds = -1) : base(() => { return action().Equals(value); }, timeoutMilliseconds, checkIntervalMilliseconds)
+            {
+
             }
         }
     }

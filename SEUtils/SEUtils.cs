@@ -97,6 +97,11 @@ namespace IngameScript
 
             private static void WaitingCoroutineStep(WaitForConditionMet conditionChecker, int enumeratorId)
             {
+                var enumerator = coroutines[enumeratorId];
+                if (!coroutines.ContainsValue(enumerator))
+                {
+                    return;
+                }
                 if (conditionChecker.condition())
                 {
                     InvokeNextUpdate(() => CoroutineStep(enumeratorId));
@@ -140,7 +145,7 @@ namespace IngameScript
                     }
                     else if (waitInstruction is IConditionChecker)
                     {
-                        WaitingCoroutineStep(waitInstruction as WaitForConditionMet, enumeratorId);
+                        InvokeNextUpdate(() => WaitingCoroutineStep(waitInstruction as WaitForConditionMet, enumeratorId));
                     }
                     else
                     {

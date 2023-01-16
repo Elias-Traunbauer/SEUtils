@@ -75,6 +75,8 @@ namespace IngameScript
                     pbLcd.ContentType = ContentType.TEXT_AND_IMAGE;
                     UpdatePBScreen();
                 }
+
+                start = DateTime.Now;
             }
 
             private static void CheckSetup()
@@ -93,6 +95,7 @@ namespace IngameScript
                 {
                     iconIndex = 0;
                 }
+
                 pbLcd.WriteText(name + (!name.ToLower().Contains("script") ? " script" : "") + " is running " + icons[iconIndex] + "\n" + uptimeDisplay);
                 Invoke(UpdatePBScreen, 1000);
             }
@@ -227,7 +230,7 @@ namespace IngameScript
             public static bool RuntimeUpdate(string argument, UpdateType updateSource)
             {
                 CheckSetup();
-                if (updateSource == UpdateType.Update1 || updateSource == UpdateType.Update10 || updateSource == UpdateType.Update100)
+                if (updateSource.HasFlag(UpdateType.Update1) || updateSource.HasFlag(UpdateType.Update10) || updateSource.HasFlag(UpdateType.Update100))
                 {
                     var nextUp = invokeNextUpdateActions.ToArray();
                     invokeNextUpdateActions.Clear();
@@ -247,7 +250,9 @@ namespace IngameScript
                         CurrentMyGridProgram.Runtime.UpdateFrequency = UpdateFrequency.Update1 | updateFreq;
                     }
                 }
-                if (updateSource == ((UpdateType)(((int)updateFreq) * 32) | UpdateType.Once | UpdateType.Trigger | UpdateType.Script)) // updateFrequency to UpdateType
+                CurrentMyGridProgram.Echo(updateSource.ToString());
+                CurrentMyGridProgram.Echo((updateSource.HasFlag(((UpdateType)(((int)updateFreq) * 32))) || updateSource.HasFlag(UpdateType.Once) || updateSource.HasFlag(UpdateType.Trigger) || updateSource.HasFlag(UpdateType.Script)).ToString());
+                if ((updateSource.HasFlag((UpdateType)(((int)updateFreq) * 32))) || updateSource.HasFlag(UpdateType.Once) || updateSource.HasFlag(UpdateType.Trigger) || updateSource.HasFlag(UpdateType.Script) || updateSource.HasFlag(UpdateType.None)) // updateFrequency to UpdateType
                 {
                     return true;
                 }

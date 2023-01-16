@@ -1,6 +1,6 @@
 # SEUtils
 
-This is a class that provides a set of useful methods for your Space Engineers scripts!
+#### A must have for your Space engineers scripts!
 
 ## [Documentation](../../wiki)
 

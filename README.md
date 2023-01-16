@@ -9,8 +9,8 @@ In order to be able to use these Utils properly, you need to use the [MDK for SE
 
 ## Installation
 
-* Clone this repo to your Computer.
-* In your Ingame Scripts project, you need to add the cloned project to your solution. (Add existing project)
+* Clone this repository onto your computer.
+* In your Ingame Script project, you need to add the cloned project to your solution. (Add existing project)
 * Add a reference to the cloned project (Add reference/Shared Projects)
 
 ## Usage

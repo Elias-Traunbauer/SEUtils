@@ -2,6 +2,8 @@
 
 This is a class that provides a set of useful methods for your Space Engineers scripts!
 
+## [Features](../../wiki)
+
 ## Requirements
 In order to be able to use these Utils properly, you need to use the [MDK for SE](https://github.com/malware-dev/MDK-SE)
 
@@ -18,5 +20,3 @@ Before you can use SEUtils you need to do two more things:
 * Add this code at the beginning of your main method `SEUtils.RuntimeUpdate(argument, updateSource);`
 
 Now you are ready to use SEUtils!
-
-## [Features](../../wiki)

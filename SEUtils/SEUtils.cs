@@ -38,18 +38,16 @@ namespace IngameScript
             private static bool setupDone = false;
             private static Dictionary<int, IEnumerator<ICoroutineInfo>> coroutines;
             private static Dictionary<int, Func<bool>> waitingCoroutines;
-            private static bool statusDisplay = true;
             private static int coroutineCounter = 0;
 
             /// <summary>
             /// Sets SEUtils up for usage and sets the UpdateFrequency to Update10
             /// </summary>
-            /// <param name="scriptBaseClass"></param>
-            /// <param name="statusDisplay"></param>
-            /// <param name="scriptName"></param>
+            /// <param name="scriptBaseClass">Your script class, most of the time 'this' will work</param>
+            /// <param name="statusDisplay">Whether you want this utils class to display the status of the PB</param>
+            /// <param name="scriptName">The name of your script, used in the status display</param>
             public static void Setup(MyGridProgram scriptBaseClass, bool statusDisplay = true, string scriptName = "Script")
             {
-                SEUtils.statusDisplay = statusDisplay;
                 coroutines = new Dictionary<int, IEnumerator<ICoroutineInfo>>();
                 waitingCoroutines = new Dictionary<int, Func<bool>>();
                 invokeNextUpdateActions = new List<Action>();
@@ -60,11 +58,6 @@ namespace IngameScript
                 CurrentCubeGrid = CurrentProgrammableBlock.CubeGrid;
 
                 name = scriptName;
-
-                start = DateTime.Now;
-                int time = 0;
-                if (int.TryParse(CurrentProgrammableBlock.CustomData, out time))
-                    start = start.AddMilliseconds(-time);
 
                 MyGridProgram.Runtime.UpdateFrequency = UpdateFrequency.Update10;
                 setupDone = true;
@@ -139,6 +132,11 @@ namespace IngameScript
                 }
             }
 
+            /// <summary>
+            /// Starts the given coroutine and returns the id of the newly started coroutine
+            /// </summary>
+            /// <param name="enumerator">Your coroutine</param>
+            /// <returns>The id of the coroutine, used to stop coroutines</returns>
             public static int StartCoroutine(IEnumerator<ICoroutineInfo> enumerator)
             {
                 int id = coroutineCounter;
@@ -148,6 +146,10 @@ namespace IngameScript
                 return id;
             }
 
+            /// <summary>
+            /// Stops the coroutine with the given id
+            /// </summary>
+            /// <param name="enumeratorId">The id of the coroutine that you want to stop, id is returned on 'StartCoroutine'</param>
             public static void StopCoroutine(int enumeratorId)
             {
                 coroutines.Remove(enumeratorId);

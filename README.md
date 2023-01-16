@@ -10,8 +10,8 @@ In order to be able to use these Utils properly, you are **required** to use the
 ## Installation
 
 * **Clone** this **repository** onto your computer.
-* In your **ingame script project**, you need to **add** the **cloned project** to **your solution**. (Add existing project)
-* **Add** a **reference** to the **cloned project** (Add reference/Shared Projects)
+* In your **ingame script project**, you need to **add** the **cloned project** to **your solution**. (Add/Existing project...)
+* **Add** a **reference** to the **cloned project** (Add reference.../Shared Projects)
 
 ## Usage
 

@@ -16,7 +16,7 @@ In order to be able to use these Utils properly, you are **required** to use the
 ## Usage
 
 **Before** you can **use SEUtils** you **need** to do **two** more **things**:
-* Add this code at the beginning of your Scripts constructor `SEUtils.Setup(this);`
+* Add this code at the beginning of your Scripts constructor `SEUtils.Setup(this, UpdateFrequency.Update10);`
 * Add this code at the beginning of your main method `SEUtils.RuntimeUpdate(argument, updateSource);`
 
 Now you are ready to use SEUtils!

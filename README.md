@@ -3,7 +3,7 @@
 This is a class that provides a set of useful methods for your Space Engineers scripts!
 
 ## Requirements
-In order to be able to use these Utils properly, you need to use the [MDK for SE]()
+In order to be able to use these Utils properly, you need to use the [MDK for SE](https://github.com/malware-dev/MDK-SE)
 
 ## Installation
 

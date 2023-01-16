@@ -19,4 +19,4 @@ Before you can use SEUtils you need to do two more things:
 
 Now you are ready to use SEUtils!
 
-## [Features]([/wiki])
+## [Features](../../wiki)

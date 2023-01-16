@@ -24,10 +24,16 @@ namespace IngameScript
     {
         public static class SEUtils
         {
+            /// <summary>
+            /// The PB that is executing this script
+            /// </summary>
             public static IMyProgrammableBlock CurrentProgrammableBlock;
+            /// <summary>
+            /// The CubeGrid the CurrentProgrammableBlock is located in
+            /// </summary>
             public static IMyCubeGrid CurrentCubeGrid;
             private static IMyGridTerminalSystem GridTerminalSystem;
-            private static MyGridProgram MyGridProgram;
+            private static MyGridProgram CurrentMyGridProgram;
             private static List<Action> invokeNextUpdateActions;
             private static List<WaitingInvokeInfo> invokeTimeActions;
             private static char[] icons = new char[] { '|', '/', '-', '\\' };
@@ -36,35 +42,31 @@ namespace IngameScript
             private static IMyTextSurface pbLcd;
             private static string name = "";
             private static bool setupDone = false;
-            private static Dictionary<int, IEnumerator<ICoroutineInfo>> coroutines;
-            private static bool statusDisplay = true;
+            private static Dictionary<int, IEnumerator> coroutines;
             private static int coroutineCounter = 0;
+            private static UpdateFrequency updateFreq;
 
             /// <summary>
-            /// Sets SEUtils up for usage and sets the UpdateFrequency to Update10
+            /// Performs the setup, that is required for SEUtils to work
             /// </summary>
-            /// <param name="scriptBaseClass"></param>
-            /// <param name="statusDisplay"></param>
-            /// <param name="scriptName"></param>
-            public static void Setup(MyGridProgram scriptBaseClass, bool statusDisplay = true, string scriptName = "Script")
+            /// <param name="scriptBaseClass">Your script class</param>
+            /// <param name="updateFrequency">Your desired update frequency</param>
+            /// <param name="statusDisplay">Whether SEUtils should display a simple status on the PB's screen</param>
+            /// <param name="scriptName">The name of your script</param>
+            public static void Setup(MyGridProgram scriptBaseClass, UpdateFrequency updateFrequency = UpdateFrequency.Update10, bool statusDisplay = true, string scriptName = "Script")
             {
-                SEUtils.statusDisplay = statusDisplay;
-                coroutines = new Dictionary<int, IEnumerator<ICoroutineInfo>>();
+                updateFreq = updateFrequency;
+                coroutines = new Dictionary<int, IEnumerator>();
                 invokeNextUpdateActions = new List<Action>();
                 invokeTimeActions = new List<WaitingInvokeInfo>();
-                MyGridProgram = scriptBaseClass;
-                GridTerminalSystem = MyGridProgram.GridTerminalSystem;
-                CurrentProgrammableBlock = MyGridProgram.Me;
+                CurrentMyGridProgram = scriptBaseClass;
+                GridTerminalSystem = CurrentMyGridProgram.GridTerminalSystem;
+                CurrentProgrammableBlock = CurrentMyGridProgram.Me;
                 CurrentCubeGrid = CurrentProgrammableBlock.CubeGrid;
 
                 name = scriptName;
 
-                start = DateTime.Now;
-                int time = 0;
-                if (int.TryParse(CurrentProgrammableBlock.CustomData, out time))
-                    start = start.AddMilliseconds(-time);
-
-                MyGridProgram.Runtime.UpdateFrequency = UpdateFrequency.Update10;
+                CurrentMyGridProgram.Runtime.UpdateFrequency = updateFreq;
                 setupDone = true;
 
                 if (statusDisplay)
@@ -92,7 +94,7 @@ namespace IngameScript
                     iconIndex = 0;
                 }
                 pbLcd.WriteText(name + (!name.ToLower().Contains("script") ? " script" : "") + " is running " + icons[iconIndex] + "\n" + uptimeDisplay);
-                InvokeTime(UpdatePBScreen, 1000);
+                Invoke(UpdatePBScreen, 1000);
             }
 
             private static void WaitingCoroutineStep(WaitForConditionMet conditionChecker, int enumeratorId)
@@ -104,21 +106,21 @@ namespace IngameScript
                 }
                 if (conditionChecker.condition())
                 {
-                    InvokeNextUpdate(() => CoroutineStep(enumeratorId));
+                    CoroutineStep(enumeratorId);
                 }
                 else
                 {
                     if (conditionChecker.timeout != -1 && (DateTime.Now - conditionChecker.started).TotalMilliseconds >= conditionChecker.timeout)
                     {
-                        InvokeNextUpdate(() => CoroutineStep(enumeratorId));
+                        InvokeNextTick(() => CoroutineStep(enumeratorId));
                     }
                     if (conditionChecker.checkInterval == -1)
                     {
-                        InvokeNextUpdate(() => WaitingCoroutineStep(conditionChecker, enumeratorId));
+                        InvokeNextTick(() => WaitingCoroutineStep(conditionChecker, enumeratorId));
                     }
                     else
                     {
-                        InvokeTime(() => WaitingCoroutineStep(conditionChecker, enumeratorId), conditionChecker.checkInterval);
+                        Invoke(() => WaitingCoroutineStep(conditionChecker, enumeratorId), conditionChecker.checkInterval);
                     }
                 }
             }
@@ -136,20 +138,20 @@ namespace IngameScript
                     
                     if (waitInstruction is WaitForNextTick)
                     {
-                        InvokeNextUpdate(() => CoroutineStep(enumeratorId));
+                        InvokeNextTick(() => CoroutineStep(enumeratorId));
                     }
                     else if (waitInstruction is WaitForMilliseconds)
                     {
                         var milliseconds = (waitInstruction as WaitForMilliseconds).milliseconds;
-                        InvokeTime(() => CoroutineStep(enumeratorId), milliseconds);
+                        Invoke(() => CoroutineStep(enumeratorId), milliseconds);
                     }
                     else if (waitInstruction is IConditionChecker)
                     {
-                        InvokeNextUpdate(() => WaitingCoroutineStep(waitInstruction as WaitForConditionMet, enumeratorId));
+                        InvokeNextTick(() => WaitingCoroutineStep(waitInstruction as WaitForConditionMet, enumeratorId));
                     }
                     else
                     {
-                        MyGridProgram.Echo("Unknown coroutine waiting instruction");
+                        CurrentMyGridProgram.Echo("Unknown coroutine waiting instruction");
                     }
                 }
                 else
@@ -158,25 +160,35 @@ namespace IngameScript
                 }
             }
 
-            public static int StartCoroutine(IEnumerator<ICoroutineInfo> enumerator)
+            /// <summary>
+            /// Starts the given coroutine and returns the id of the coroutine's instance
+            /// </summary>
+            /// <param name="coroutine">Coroutine to start</param>
+            /// <returns>Id of the coroutine's instance</returns>
+            public static int StartCoroutine(IEnumerator coroutine)
             {
                 int id = coroutineCounter;
                 coroutineCounter++;
-                coroutines.Add(id, enumerator);
+                coroutines.Add(id, coroutine);
                 CoroutineStep(id);
                 return id;
             }
 
-            public static void StopCoroutine(int enumeratorId)
+            /// <summary>
+            /// Stops a coroutine-instance if present and returns if the instance was found and stopping was successful
+            /// </summary>
+            /// <param name="coroutineInstanceId">The coroutine to stop</param>
+            /// <returns>if the instance was found and stopping was successful</returns>
+            public static bool StopCoroutine(int coroutineInstanceId)
             {
-                coroutines.Remove(enumeratorId);
+                return coroutines.Remove(coroutineInstanceId);
             }
 
             /// <summary>
-            /// Checks if the given block is in the grid of the PB
+            /// Checks if the given block is on the same grid as the current PB
             /// </summary>
-            /// <param name="block"></param>
-            /// <returns></returns>
+            /// <param name="block">Block to check the grid on</param>
+            /// <returns>if the block is on the same grid as the current PB</returns>
             public static bool IsInGrid(IMyTerminalBlock block)
             {
                 CheckSetup();
@@ -184,32 +196,35 @@ namespace IngameScript
             }
 
             /// <summary>
-            /// Invokes the given Action for the next tick
+            /// Invokes the given action to be executed in the next game tick
             /// </summary>
-            /// <param name="invoke"></param>
-            public static void InvokeNextUpdate(Action invoke)
+            /// <param name="action">Action to invoke</param>
+            public static void InvokeNextTick(Action action)
             {
                 CheckSetup();
-                invokeNextUpdateActions.Add(invoke);
+                CurrentMyGridProgram.Runtime.UpdateFrequency = UpdateFrequency.Update1 | updateFreq;
+                invokeNextUpdateActions.Add(action);
             }
 
             /// <summary>
             /// Invokes the given action to be executed after the given milliseconds passed
             /// </summary>
-            /// <param name="invoke"></param>
-            /// <param name="milliseconds"></param>
-            public static void InvokeTime(Action invoke, int milliseconds)
+            /// <param name="action">Action to execute</param>
+            /// <param name="milliseconds">Milliseconds to wait</param>
+            public static void Invoke(Action action, int milliseconds)
             {
                 CheckSetup();
-                invokeTimeActions.Add(new WaitingInvokeInfo(invoke, DateTime.Now.AddMilliseconds(milliseconds)));
+                invokeTimeActions.Add(new WaitingInvokeInfo(action, DateTime.Now.AddMilliseconds(milliseconds)));
             }
 
             /// <summary>
-            /// Execute this method in your main method at the start
+            /// It is necessary that you call this method in your Main method at the beginning.
+            /// Only execute your script's code if this method returns true.
             /// </summary>
-            /// <param name="argument"></param>
-            /// <param name="updateSource"></param>
-            public static void RuntimeUpdate(string argument, UpdateType updateSource)
+            /// <param name="argument">The parameter 'argument' that is passed to your Main method</param>
+            /// <param name="updateSource">The parameter 'updateSource' that is passed to your Main method</param>
+            /// <returns>If you should execute your code</returns>
+            public static bool RuntimeUpdate(string argument, UpdateType updateSource)
             {
                 CheckSetup();
                 if (updateSource == UpdateType.Update1 || updateSource == UpdateType.Update10 || updateSource == UpdateType.Update100)
@@ -227,10 +242,18 @@ namespace IngameScript
                         item();
                     }
                     invokeTimeActions = invokeTimeActions.Where(x => DateTime.Now < x.datetime).ToList();
+                    if (invokeTimeActions.Any(x => (DateTime.Now - x.datetime).TotalMilliseconds < 10 * (1000 / 60)))
+                    {
+                        CurrentMyGridProgram.Runtime.UpdateFrequency = UpdateFrequency.Update1 | updateFreq;
+                    }
                 }
-                else if (argument == "")
+                if (updateSource == ((UpdateType)(((int)updateFreq) * 32) | UpdateType.Once | UpdateType.Trigger | UpdateType.Script)) // updateFrequency to UpdateType
                 {
-                    start = DateTime.Now;
+                    return true;
+                }
+                else
+                {
+                    return false;
                 }
             }
         }
@@ -248,21 +271,16 @@ namespace IngameScript
         }
 
         /// <summary>
-        /// Use this interface for coroutines
+        /// Waits for the next game tick and continues the coroutine
         /// </summary>
-        public interface ICoroutineInfo
+        public class WaitForNextTick
         {
 
         }
 
         /// <summary>
-        /// Waits for the next tick and continues then
+        /// Interface for all Wait-actions for coroutines that check a condition
         /// </summary>
-        public class WaitForNextTick : ICoroutineInfo
-        {
-
-        }
-
         public interface IConditionChecker
         {
             DateTime started { get; set; }
@@ -273,7 +291,7 @@ namespace IngameScript
         /// <summary>
         /// Waits for the given milliseconds to pass
         /// </summary>
-        public class WaitForMilliseconds : ICoroutineInfo
+        public class WaitForMilliseconds
         {
             public int milliseconds;
 
@@ -284,12 +302,18 @@ namespace IngameScript
         }
 
         /// <summary>
-        /// Waits at least for the next tick, but waits for the condition to be true
+        /// Waits at least for the next game tick, after that waits for the given condition to be true
         /// </summary>
-        public class WaitForConditionMet : ICoroutineInfo, IConditionChecker
+        public class WaitForConditionMet : IConditionChecker
         {
             public Func<bool> condition;
 
+            /// <summary>
+            ///
+            /// </summary>
+            /// <param name="action">Action that evaluates your condition</param>
+            /// <param name="timeoutMilliseconds">Timeout; -1 for none. Coroutine continues after timeout has passed</param>
+            /// <param name="checkIntervalMilliseconds">Delay to wait between the condition checks; -1 for none</param>
             public WaitForConditionMet(Func<bool> action, int timeoutMilliseconds = -1, int checkIntervalMilliseconds = -1)
             {
                 condition = action;
@@ -319,8 +343,19 @@ namespace IngameScript
             }
         }
 
-        public class WaitForValueEqual<T> : WaitForConditionMet, ICoroutineInfo, IConditionChecker where T : IComparable
+        /// <summary>
+        /// Waits for the returned value of a Func and another value to be equal
+        /// </summary>
+        /// <typeparam name="T">Type of the values that are compared</typeparam>
+        public class WaitForValueEqual<T> : WaitForConditionMet where T : IComparable
         {
+            /// <summary>
+            ///
+            /// </summary>
+            /// <param name="action">Action that returns the value to compare</param>
+            /// <param name="value">Value to compare to</param>
+            /// <param name="timeoutMilliseconds">Timeout; -1 for none. Coroutine continues after timeout has passed</param>
+            /// <param name="checkIntervalMilliseconds">Delay to wait between the condition checks; -1 for none</param>
             public WaitForValueEqual(Func<T> action, T value, int timeoutMilliseconds = -1, int checkIntervalMilliseconds = -1) : base(() => { return action().Equals(value); }, timeoutMilliseconds, checkIntervalMilliseconds)
             {
 

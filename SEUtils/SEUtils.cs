@@ -133,7 +133,7 @@ namespace IngameScript
                 if (enumerator.MoveNext())
                 {
                     var waitInstruction = enumerator.Current;
-                    MyGridProgram.Echo(waitInstruction.GetType().FullName);
+                    
                     if (waitInstruction is WaitForNextTick)
                     {
                         InvokeNextUpdate(() => CoroutineStep(enumeratorId));

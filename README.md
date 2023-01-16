@@ -2,7 +2,7 @@
 
 This is a class that provides a set of useful methods for your Space Engineers scripts!
 
-## [Features](../../wiki)
+## [Documentation](../../wiki)
 
 ## Requirements
 In order to be able to use these Utils properly, you are **required** to use the **[MDK for SE](https://github.com/malware-dev/MDK-SE)**

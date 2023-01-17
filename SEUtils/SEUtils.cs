@@ -95,7 +95,7 @@ namespace IngameScript
                 {
                     iconIndex = 0;
                 }
-
+                
                 pbLcd.WriteText(name + (!name.ToLower().Contains("script") ? " script" : "") + " is running " + icons[iconIndex] + "\n" + uptimeDisplay);
                 Invoke(UpdatePBScreen, 1000);
             }
@@ -314,7 +314,7 @@ namespace IngameScript
             public Func<bool> condition;
 
             /// <summary>
-            ///
+            /// Waits for the given condition to be true, but waits at least for the next game tick
             /// </summary>
             /// <param name="action">Action that evaluates your condition</param>
             /// <param name="timeoutMilliseconds">Timeout; -1 for none. Coroutine continues after timeout has passed</param>

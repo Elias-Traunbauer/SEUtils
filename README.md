@@ -21,5 +21,3 @@ SEUtils.Setup(this);
 if (!SEUtils.RuntimeUpdate(argument, updateSource)) return;
 ```
 ### Now the setup is completed. You can continue by creating your first [Coroutine](Coroutines)
-
-Now you are ready to use SEUtils!

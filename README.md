@@ -16,7 +16,7 @@ In order to be able to use these Utils properly, you are **required** to use the
  ```c#
 SEUtils.Setup(this);
 ```
-* Add this code to your main method
+* Add this code to the beginning your main method
 ```c#
 if (!SEUtils.RuntimeUpdate(argument, updateSource)) return;
 ```

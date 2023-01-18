@@ -20,4 +20,4 @@ SEUtils.Setup(this);
 ```c#
 if (!SEUtils.RuntimeUpdate(argument, updateSource)) return;
 ```
-### Now the setup is completed. You can continue by creating your first [Coroutine](Coroutines)
+### Now the setup is completed. You can continue by creating your first [Coroutine](wiki/Coroutines)

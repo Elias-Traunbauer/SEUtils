@@ -115,8 +115,14 @@ namespace IngameScript
                     {
                         if (conditionChecker.timeoutAction != null)
                         {
-                            conditionChecker.timeoutAction();
-                            StopCoroutine(enumeratorId);
+                            if (conditionChecker.timeoutAction())
+                            {
+                                InvokeNextTick(() => CoroutineStep(enumeratorId));
+                            }
+                            else
+                            {
+                                StopCoroutine(enumeratorId);
+                            }
                         }
                         else
                         {
@@ -321,7 +327,7 @@ namespace IngameScript
 
         /// <summary>
         /// Waits at least for the next game tick, after that waits for the given condition to be true
-        /// If timeout is specified, after the timeout passed and there is a timeoutAction specified, the timeoutAction will be executed, otherwise coroutine continues
+        /// If timeout is specified, after the timeout passed and there is a timeoutAction specified, the timeoutAction will be executed, if timeoutAction returns true, coroutine continues, otherwise terminates
         /// </summary>
         public class WaitForConditionMet
         {
@@ -333,17 +339,17 @@ namespace IngameScript
             /// <param name="action">Action that evaluates your condition</param>
             /// <param name="timeoutMilliseconds">Timeout; -1 for none; Coroutine continues after timeout has passed, if no timeoutAction is passed</param>
             /// <param name="checkIntervalMilliseconds">Delay to wait between the condition checks; -1 for none</param>
-            /// <param name="timeoutAction">Action to execute when timeout passed; If null, coroutine continues after timeout</param>
-            public WaitForConditionMet(Func<bool> action, int timeoutMilliseconds = -1, int checkIntervalMilliseconds = -1, Action timeoutAction = null)
+            /// <param name="timeoutFunc">Func to execute when timeout passed; If null, coroutine continues after timeout; If func returns true, coroutine continues, otherwise terminates</param>
+            public WaitForConditionMet(Func<bool> action, int timeoutMilliseconds = -1, int checkIntervalMilliseconds = -1, Func<bool> timeoutFunc = null)
             {
                 condition = action;
                 timeout = timeoutMilliseconds;
                 checkInterval = checkIntervalMilliseconds;
-                this.timeoutAction = timeoutAction;
+                this.timeoutAction = timeoutFunc;
                 started = DateTime.Now;
             }
 
-            public Action timeoutAction { get; set; }
+            public Func<bool> timeoutAction { get; set; }
             public DateTime started { get; set; }
             public int checkInterval { get; set; }
             public int timeout { get; set; }

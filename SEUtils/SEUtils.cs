@@ -181,7 +181,7 @@ namespace IngameScript
             /// Stops a coroutine-instance if present and returns if the instance was found and stopping was successful
             /// </summary>
             /// <param name="coroutineInstanceId">The coroutine to stop</param>
-            /// <returns>if the instance was found and stopping was successful</returns>
+            /// <returns>true if the instance was found and stopping was successful, otherwise false</returns>
             public static bool StopCoroutine(int coroutineInstanceId)
             {
                 return coroutines.Remove(coroutineInstanceId);
@@ -191,7 +191,7 @@ namespace IngameScript
             /// Checks if the given block is on the same grid as the current PB
             /// </summary>
             /// <param name="block">Block to check the grid on</param>
-            /// <returns>if the block is on the same grid as the current PB</returns>
+            /// <returns>true if the block is on the same grid as the current PB, otherwise false</returns>
             public static bool IsInGrid(IMyTerminalBlock block)
             {
                 CheckSetup();
@@ -226,7 +226,7 @@ namespace IngameScript
             /// </summary>
             /// <param name="argument">The parameter 'argument' that is passed to your Main method</param>
             /// <param name="updateSource">The parameter 'updateSource' that is passed to your Main method</param>
-            /// <returns>If you should execute your code</returns>
+            /// <returns>ture if you should execute your code, otherwise false</returns>
             public static bool RuntimeUpdate(string argument, UpdateType updateSource)
             {
                 CheckSetup();

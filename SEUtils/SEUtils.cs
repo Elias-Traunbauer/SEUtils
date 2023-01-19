@@ -95,18 +95,18 @@ namespace IngameScript
                 {
                     iconIndex = 0;
                 }
-
+                
                 pbLcd.WriteText(name + (!name.ToLower().Contains("script") ? " script" : "") + " is running " + icons[iconIndex] + "\n" + uptimeDisplay);
                 Invoke(UpdatePBScreen, 1000);
             }
 
             private static void WaitingCoroutineStep(WaitForConditionMet conditionChecker, int enumeratorId)
             {
-                var enumerator = coroutines[enumeratorId];
-                if (!coroutines.ContainsValue(enumerator))
+                if (!coroutines.ContainsKey(enumeratorId))
                 {
                     return;
                 }
+                var enumerator = coroutines[enumeratorId];
                 if (conditionChecker.condition())
                 {
                     CoroutineStep(enumeratorId);
@@ -130,11 +130,11 @@ namespace IngameScript
 
             private static void CoroutineStep(int enumeratorId)
             {
-                var enumerator = coroutines[enumeratorId];
-                if (!coroutines.ContainsValue(enumerator))
+                if (!coroutines.ContainsKey(enumeratorId))
                 {
                     return;
                 }
+                var enumerator = coroutines[enumeratorId];
                 if (enumerator.MoveNext())
                 {
                     var waitInstruction = enumerator.Current;
@@ -229,35 +229,44 @@ namespace IngameScript
             /// <returns>ture if you should execute your code, otherwise false</returns>
             public static bool RuntimeUpdate(string argument, UpdateType updateSource)
             {
-                CheckSetup();
-                if (updateSource.HasFlag(UpdateType.Update1) || updateSource.HasFlag(UpdateType.Update10) || updateSource.HasFlag(UpdateType.Update100))
+                try
                 {
-                    var nextUp = invokeNextUpdateActions.ToArray();
-                    invokeNextUpdateActions.Clear();
-                    foreach (var item in nextUp)
+                    CheckSetup();
+                    if (updateSource.HasFlag(UpdateType.Update1) || updateSource.HasFlag(UpdateType.Update10) || updateSource.HasFlag(UpdateType.Update100))
                     {
-                        item();
+                        var nextUp = invokeNextUpdateActions.ToArray();
+                        invokeNextUpdateActions.Clear();
+                        foreach (var item in nextUp)
+                        {
+                            item();
+                        }
+
+                        var actions = invokeTimeActions.Where(x => DateTime.Now >= x.datetime).Select(x => x.action).ToList();
+                        foreach (var item in actions)
+                        {
+                            item();
+                        }
+                        invokeTimeActions = invokeTimeActions.Where(x => DateTime.Now < x.datetime).ToList();
+                        if (invokeTimeActions.Any(x => (DateTime.Now - x.datetime).TotalMilliseconds < 10 * (1000 / 60)))
+                        {
+                            CurrentMyGridProgram.Runtime.UpdateFrequency = UpdateFrequency.Update1 | updateFreq;
+                        }
                     }
 
-                    var actions = invokeTimeActions.Where(x => DateTime.Now >= x.datetime).Select(x => x.action).ToList();
-                    foreach (var item in actions)
+                    if ((updateSource.HasFlag((UpdateType)(((int)updateFreq) * 32))) || updateSource.HasFlag(UpdateType.Once) || updateSource.HasFlag(UpdateType.Trigger) || updateSource.HasFlag(UpdateType.Script) || updateSource.HasFlag(UpdateType.None)) // updateFrequency to UpdateType
                     {
-                        item();
+                        return true;
                     }
-                    invokeTimeActions = invokeTimeActions.Where(x => DateTime.Now < x.datetime).ToList();
-                    if (invokeTimeActions.Any(x => (DateTime.Now - x.datetime).TotalMilliseconds < 10 * (1000 / 60)))
+                    else
                     {
-                        CurrentMyGridProgram.Runtime.UpdateFrequency = UpdateFrequency.Update1 | updateFreq;
+                        return false;
                     }
                 }
-
-                if ((updateSource.HasFlag((UpdateType)(((int)updateFreq) * 32))) || updateSource.HasFlag(UpdateType.Once) || updateSource.HasFlag(UpdateType.Trigger) || updateSource.HasFlag(UpdateType.Script) || updateSource.HasFlag(UpdateType.None)) // updateFrequency to UpdateType
+                catch (Exception ex)
                 {
-                    return true;
-                }
-                else
-                {
-                    return false;
+                    pbLcd.ContentType = ContentType.TEXT_AND_IMAGE;
+                    pbLcd.WriteText("Exception in SEUtils caught: " + ex.Message + "\n" + ex.StackTrace);
+                    throw ex;
                 }
             }
         }
@@ -313,7 +322,7 @@ namespace IngameScript
             public Func<bool> condition;
 
             /// <summary>
-            ///
+            /// Waits for the given condition to be true, but waits at least for the next game tick
             /// </summary>
             /// <param name="action">Action that evaluates your condition</param>
             /// <param name="timeoutMilliseconds">Timeout; -1 for none. Coroutine continues after timeout has passed</param>

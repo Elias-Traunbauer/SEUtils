@@ -201,6 +201,16 @@ namespace IngameScript
                 return coroutines.Remove(coroutineInstanceId);
             }
 
+            /// <summary>
+            /// Checks wheter the coroutine with the given id is running
+            /// </summary>
+            /// <param name="coroutineInstanceId">The coroutine to check</param>
+            /// <returns>if the instance was found</returns>
+            public static bool CheckCoroutineRunning(int coroutineInstanceId)
+            {
+                return coroutines.ContainsKey(coroutineInstanceId);
+            }
+
             #endregion
 
             #region Util Methods

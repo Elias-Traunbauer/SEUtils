@@ -1,22 +1,10 @@
-﻿using Sandbox.Game.EntityComponents;
-using Sandbox.ModAPI.Ingame;
-using Sandbox.ModAPI.Interfaces;
-using SpaceEngineers.Game.ModAPI.Ingame;
+﻿using Sandbox.ModAPI.Ingame;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
-using System.Text;
-using VRage;
-using VRage.Collections;
-using VRage.Game;
-using VRage.Game.Components;
 using VRage.Game.GUI.TextPanel;
 using VRage.Game.ModAPI.Ingame;
-using VRage.Game.ModAPI.Ingame.Utilities;
-using VRage.Game.ObjectBuilders.Definitions;
-using VRageMath;
 
 namespace IngameScript
 {
@@ -24,6 +12,7 @@ namespace IngameScript
     {
         public static class SEUtils
         {
+            #region Public Properties
             /// <summary>
             /// The PB that is executing this script
             /// </summary>
@@ -32,6 +21,9 @@ namespace IngameScript
             /// The CubeGrid the CurrentProgrammableBlock is located in
             /// </summary>
             public static IMyCubeGrid CurrentCubeGrid;
+            #endregion
+
+            #region Private Properties
             private static IMyGridTerminalSystem GridTerminalSystem;
             private static MyGridProgram CurrentMyGridProgram;
             private static List<Action> invokeNextUpdateActions;
@@ -45,7 +37,9 @@ namespace IngameScript
             private static Dictionary<int, IEnumerator> coroutines;
             private static int coroutineCounter = 0;
             private static UpdateFrequency updateFreq;
+            #endregion
 
+            #region Setup
             /// <summary>
             /// Performs the setup, that is required for SEUtils to work
             /// </summary>
@@ -78,7 +72,9 @@ namespace IngameScript
 
                 start = DateTime.Now;
             }
+            #endregion
 
+            #region Private Setup and Status methods
             private static void CheckSetup()
             {
                 if (!setupDone)
@@ -95,11 +91,13 @@ namespace IngameScript
                 {
                     iconIndex = 0;
                 }
-                
+
                 pbLcd.WriteText(name + (!name.ToLower().Contains("script") ? " script" : "") + " is running " + icons[iconIndex] + "\n" + uptimeDisplay);
                 Invoke(UpdatePBScreen, 1000);
             }
+            #endregion
 
+            #region Coroutine Private Methods
             private static void WaitingCoroutineStep(WaitForConditionMet conditionChecker, int enumeratorId)
             {
                 if (!coroutines.ContainsKey(enumeratorId))
@@ -115,7 +113,15 @@ namespace IngameScript
                 {
                     if (conditionChecker.timeout != -1 && (DateTime.Now - conditionChecker.started).TotalMilliseconds >= conditionChecker.timeout)
                     {
-                        InvokeNextTick(() => CoroutineStep(enumeratorId));
+                        if (conditionChecker.timeoutAction != null)
+                        {
+                            conditionChecker.timeoutAction();
+                            StopCoroutine(enumeratorId);
+                        }
+                        else
+                        {
+                            InvokeNextTick(() => CoroutineStep(enumeratorId));
+                        }
                     }
                     if (conditionChecker.checkInterval == -1)
                     {
@@ -138,7 +144,7 @@ namespace IngameScript
                 if (enumerator.MoveNext())
                 {
                     var waitInstruction = enumerator.Current;
-                    
+
                     if (waitInstruction is WaitForNextTick)
                     {
                         InvokeNextTick(() => CoroutineStep(enumeratorId));
@@ -148,7 +154,7 @@ namespace IngameScript
                         var milliseconds = (waitInstruction as WaitForMilliseconds).milliseconds;
                         Invoke(() => CoroutineStep(enumeratorId), milliseconds);
                     }
-                    else if (waitInstruction is IConditionChecker)
+                    else if (waitInstruction is WaitForConditionMet)
                     {
                         InvokeNextTick(() => WaitingCoroutineStep(waitInstruction as WaitForConditionMet, enumeratorId));
                     }
@@ -162,7 +168,9 @@ namespace IngameScript
                     coroutines.Remove(enumeratorId);
                 }
             }
+            #endregion
 
+            #region Coroutine Public Methods
             /// <summary>
             /// Starts the given coroutine and returns the id of the coroutine's instance
             /// </summary>
@@ -181,17 +189,20 @@ namespace IngameScript
             /// Stops a coroutine-instance if present and returns if the instance was found and stopping was successful
             /// </summary>
             /// <param name="coroutineInstanceId">The coroutine to stop</param>
-            /// <returns>true if the instance was found and stopping was successful, otherwise false</returns>
+            /// <returns>if the instance was found and stopping was successful</returns>
             public static bool StopCoroutine(int coroutineInstanceId)
             {
                 return coroutines.Remove(coroutineInstanceId);
             }
 
+            #endregion
+
+            #region Util Methods
             /// <summary>
             /// Checks if the given block is on the same grid as the current PB
             /// </summary>
             /// <param name="block">Block to check the grid on</param>
-            /// <returns>true if the block is on the same grid as the current PB, otherwise false</returns>
+            /// <returns>if the block is on the same grid as the current PB</returns>
             public static bool IsInGrid(IMyTerminalBlock block)
             {
                 CheckSetup();
@@ -219,14 +230,16 @@ namespace IngameScript
                 CheckSetup();
                 invokeTimeActions.Add(new WaitingInvokeInfo(action, DateTime.Now.AddMilliseconds(milliseconds)));
             }
+            #endregion
 
+            #region UpdateRuntime Method
             /// <summary>
             /// It is necessary that you call this method in your Main method at the beginning.
             /// Only execute your script's code if this method returns true.
             /// </summary>
             /// <param name="argument">The parameter 'argument' that is passed to your Main method</param>
             /// <param name="updateSource">The parameter 'updateSource' that is passed to your Main method</param>
-            /// <returns>ture if you should execute your code, otherwise false</returns>
+            /// <returns>If you should execute your code</returns>
             public static bool RuntimeUpdate(string argument, UpdateType updateSource)
             {
                 try
@@ -269,8 +282,10 @@ namespace IngameScript
                     throw ex;
                 }
             }
+            #endregion
         }
 
+        #region Info Classes
         private class WaitingInvokeInfo
         {
             public Action action;
@@ -292,16 +307,6 @@ namespace IngameScript
         }
 
         /// <summary>
-        /// Interface for all Wait-actions for coroutines that check a condition
-        /// </summary>
-        public interface IConditionChecker
-        {
-            DateTime started { get; set; }
-            int checkInterval { get; set; }
-            int timeout { get; set; }
-        }
-
-        /// <summary>
         /// Waits for the given milliseconds to pass
         /// </summary>
         public class WaitForMilliseconds
@@ -316,8 +321,9 @@ namespace IngameScript
 
         /// <summary>
         /// Waits at least for the next game tick, after that waits for the given condition to be true
+        /// If timeout is specified, after the timeout passed and there is a timeoutAction specified, the timeoutAction will be executed, otherwise coroutine continues
         /// </summary>
-        public class WaitForConditionMet : IConditionChecker
+        public class WaitForConditionMet
         {
             public Func<bool> condition;
 
@@ -325,54 +331,23 @@ namespace IngameScript
             /// Waits for the given condition to be true, but waits at least for the next game tick
             /// </summary>
             /// <param name="action">Action that evaluates your condition</param>
-            /// <param name="timeoutMilliseconds">Timeout; -1 for none. Coroutine continues after timeout has passed</param>
+            /// <param name="timeoutMilliseconds">Timeout; -1 for none; Coroutine continues after timeout has passed, if no timeoutAction is passed</param>
             /// <param name="checkIntervalMilliseconds">Delay to wait between the condition checks; -1 for none</param>
-            public WaitForConditionMet(Func<bool> action, int timeoutMilliseconds = -1, int checkIntervalMilliseconds = -1)
+            /// <param name="timeoutAction">Action to execute when timeout passed; If null, coroutine continues after timeout</param>
+            public WaitForConditionMet(Func<bool> action, int timeoutMilliseconds = -1, int checkIntervalMilliseconds = -1, Action timeoutAction = null)
             {
                 condition = action;
                 timeout = timeoutMilliseconds;
                 checkInterval = checkIntervalMilliseconds;
+                this.timeoutAction = timeoutAction;
                 started = DateTime.Now;
             }
 
-            public DateTime started
-            {
-                get;
-                set;
-            }
-
-            public int checkInterval
-            {
-                get;
-
-                set;
-            }
-
-            public int timeout
-            {
-                get;
-
-                set;
-            }
+            public Action timeoutAction { get; set; }
+            public DateTime started { get; set; }
+            public int checkInterval { get; set; }
+            public int timeout { get; set; }
         }
-
-        /// <summary>
-        /// Waits for the returned value of a Func and another value to be equal
-        /// </summary>
-        /// <typeparam name="T">Type of the values that are compared</typeparam>
-        public class WaitForValueEqual<T> : WaitForConditionMet where T : IComparable
-        {
-            /// <summary>
-            ///
-            /// </summary>
-            /// <param name="action">Action that returns the value to compare</param>
-            /// <param name="value">Value to compare to</param>
-            /// <param name="timeoutMilliseconds">Timeout; -1 for none. Coroutine continues after timeout has passed</param>
-            /// <param name="checkIntervalMilliseconds">Delay to wait between the condition checks; -1 for none</param>
-            public WaitForValueEqual(Func<T> action, T value, int timeoutMilliseconds = -1, int checkIntervalMilliseconds = -1) : base(() => { return action().Equals(value); }, timeoutMilliseconds, checkIntervalMilliseconds)
-            {
-
-            }
-        }
+        #endregion
     }
 }

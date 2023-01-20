@@ -48,7 +48,7 @@ namespace IngameScript
             /// <param name="updateFrequency">Your desired update frequency</param>
             /// <param name="statusDisplay">Whether SEUtils should display a simple status on the PB's screen</param>
             /// <param name="scriptName">The name of your script</param>
-            public void Setup(MyGridProgram scriptBaseClass, UpdateFrequency updateFrequency = UpdateFrequency.Update10, bool statusDisplay = true, string scriptName = "Script")
+            public SEUtils(MyGridProgram scriptBaseClass, UpdateFrequency updateFrequency = UpdateFrequency.Update10, bool statusDisplay = true, string scriptName = "Script")
             {
                 updateFreq = updateFrequency;
                 coroutines = new Dictionary<int, IEnumerator>();

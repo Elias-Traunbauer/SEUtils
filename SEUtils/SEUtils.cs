@@ -5,38 +5,39 @@ using System.Collections.Generic;
 using System.Linq;
 using VRage.Game.GUI.TextPanel;
 using VRage.Game.ModAPI.Ingame;
+using VRageMath;
 
 namespace IngameScript
 {
     partial class Program
     {
-        public static class SEUtils
+        public class SEUtils
         {
             #region Public Properties
             /// <summary>
             /// The PB that is executing this script
             /// </summary>
-            public static IMyProgrammableBlock CurrentProgrammableBlock;
+            public IMyProgrammableBlock CurrentProgrammableBlock;
             /// <summary>
             /// The CubeGrid the CurrentProgrammableBlock is located in
             /// </summary>
-            public static IMyCubeGrid CurrentCubeGrid;
+            public IMyCubeGrid CurrentCubeGrid;
             #endregion
 
             #region Private Properties
-            private static IMyGridTerminalSystem GridTerminalSystem;
-            private static MyGridProgram CurrentMyGridProgram;
-            private static List<Action> invokeNextUpdateActions;
-            private static List<WaitingInvokeInfo> invokeTimeActions;
-            private static char[] icons = new char[] { '|', '/', '-', '\\' };
-            private static int iconIndex = 0;
-            private static DateTime start;
-            private static IMyTextSurface pbLcd;
-            private static string name = "";
-            private static bool setupDone = false;
-            private static Dictionary<int, IEnumerator> coroutines;
-            private static int coroutineCounter = 0;
-            private static UpdateFrequency updateFreq;
+            private IMyGridTerminalSystem GridTerminalSystem;
+            private MyGridProgram CurrentMyGridProgram;
+            private List<Action> invokeNextUpdateActions;
+            private List<WaitingInvokeInfo> invokeTimeActions;
+            private char[] icons = new char[] { '|', '/', '-', '\\' };
+            private int iconIndex = 0;
+            private DateTime start;
+            private IMyTextSurface pbLcd;
+            private string name = "";
+            private bool setupDone = false;
+            private Dictionary<int, IEnumerator> coroutines;
+            private int coroutineCounter = 0;
+            private UpdateFrequency updateFreq;
             #endregion
 
             #region Setup
@@ -47,7 +48,7 @@ namespace IngameScript
             /// <param name="updateFrequency">Your desired update frequency</param>
             /// <param name="statusDisplay">Whether SEUtils should display a simple status on the PB's screen</param>
             /// <param name="scriptName">The name of your script</param>
-            public static void Setup(MyGridProgram scriptBaseClass, UpdateFrequency updateFrequency = UpdateFrequency.Update10, bool statusDisplay = true, string scriptName = "Script")
+            public void Setup(MyGridProgram scriptBaseClass, UpdateFrequency updateFrequency = UpdateFrequency.Update10, bool statusDisplay = true, string scriptName = "Script")
             {
                 updateFreq = updateFrequency;
                 coroutines = new Dictionary<int, IEnumerator>();
@@ -75,7 +76,7 @@ namespace IngameScript
             #endregion
 
             #region Private Setup and Status methods
-            private static void CheckSetup()
+            private void CheckSetup()
             {
                 if (!setupDone)
                 {
@@ -83,7 +84,7 @@ namespace IngameScript
                 }
             }
 
-            private static void UpdatePBScreen()
+            private void UpdatePBScreen()
             {
                 string uptimeDisplay = "Uptime: " + (DateTime.Now - start).ToString();
                 iconIndex++;
@@ -98,7 +99,7 @@ namespace IngameScript
             #endregion
 
             #region Coroutine Private Methods
-            private static void WaitingCoroutineStep(WaitForConditionMet conditionChecker, int enumeratorId)
+            private void WaitingCoroutineStep(WaitForConditionMet conditionChecker, int enumeratorId)
             {
                 if (!coroutines.ContainsKey(enumeratorId))
                 {
@@ -140,7 +141,7 @@ namespace IngameScript
                 }
             }
 
-            private static void CoroutineStep(int enumeratorId)
+            private void CoroutineStep(int enumeratorId)
             {
                 if (!coroutines.ContainsKey(enumeratorId))
                 {
@@ -182,7 +183,7 @@ namespace IngameScript
             /// </summary>
             /// <param name="coroutine">Coroutine to start</param>
             /// <returns>Id of the coroutine's instance</returns>
-            public static int StartCoroutine(IEnumerator coroutine)
+            public int StartCoroutine(IEnumerator coroutine)
             {
                 int id = coroutineCounter;
                 coroutineCounter++;
@@ -196,7 +197,7 @@ namespace IngameScript
             /// </summary>
             /// <param name="coroutineInstanceId">The coroutine to stop</param>
             /// <returns>if the instance was found and stopping was successful</returns>
-            public static bool StopCoroutine(int coroutineInstanceId)
+            public bool StopCoroutine(int coroutineInstanceId)
             {
                 return coroutines.Remove(coroutineInstanceId);
             }
@@ -206,7 +207,7 @@ namespace IngameScript
             /// </summary>
             /// <param name="coroutineInstanceId">The coroutine to check</param>
             /// <returns>if the instance was found</returns>
-            public static bool CheckCoroutineRunning(int coroutineInstanceId)
+            public bool CheckCoroutineRunning(int coroutineInstanceId)
             {
                 return coroutines.ContainsKey(coroutineInstanceId);
             }
@@ -219,7 +220,7 @@ namespace IngameScript
             /// </summary>
             /// <param name="block">Block to check the grid on</param>
             /// <returns>if the block is on the same grid as the current PB</returns>
-            public static bool IsInGrid(IMyTerminalBlock block)
+            public bool IsInGrid(IMyTerminalBlock block)
             {
                 CheckSetup();
                 return block.CubeGrid == CurrentCubeGrid;
@@ -229,7 +230,7 @@ namespace IngameScript
             /// Invokes the given action to be executed in the next game tick
             /// </summary>
             /// <param name="action">Action to invoke</param>
-            public static void InvokeNextTick(Action action)
+            public void InvokeNextTick(Action action)
             {
                 CheckSetup();
                 CurrentMyGridProgram.Runtime.UpdateFrequency = UpdateFrequency.Update1 | updateFreq;
@@ -241,7 +242,7 @@ namespace IngameScript
             /// </summary>
             /// <param name="action">Action to execute</param>
             /// <param name="milliseconds">Milliseconds to wait</param>
-            public static void Invoke(Action action, int milliseconds)
+            public void Invoke(Action action, int milliseconds)
             {
                 CheckSetup();
                 invokeTimeActions.Add(new WaitingInvokeInfo(action, DateTime.Now.AddMilliseconds(milliseconds)));
@@ -256,7 +257,7 @@ namespace IngameScript
             /// <param name="argument">The parameter 'argument' that is passed to your Main method</param>
             /// <param name="updateSource">The parameter 'updateSource' that is passed to your Main method</param>
             /// <returns>If you should execute your code</returns>
-            public static bool RuntimeUpdate(string argument, UpdateType updateSource)
+            public bool RuntimeUpdate(string argument, UpdateType updateSource)
             {
                 try
                 {
@@ -363,6 +364,118 @@ namespace IngameScript
             public DateTime started { get; set; }
             public int checkInterval { get; set; }
             public int timeout { get; set; }
+        }
+        #endregion
+
+        #region LCD Projection
+        /// <summary>
+        /// Class to project points from a world position onto an lcd
+        /// NOTE: Only works if the ViewPoint is infront of the lcd -> Transparent LCDS from the back dont work
+        /// </summary>
+        public class TextPanelRenderingContext
+        {
+            public Vector3D ViewPoint { get; private set; }
+            public IMyTextPanel TextPanel { get; private set; }
+            public Vector2 PixelMultiplier { get; private set; }
+
+            private readonly Vector3D Normal = Vector3D.Backward;
+            public static readonly double TextPanelThickness = 0.05f;
+            public static readonly double D = 2.5d / 2d - TextPanelThickness;
+            public static float TextPanelTextureMargin = 0f;
+
+            /// <summary>
+            /// Initializes the renderer to a working state
+            /// </summary>
+            /// <param name="lcd">The lcd you want to project to</param>
+            /// <param name="viewPointDirection">Direction to view from local to lcd's matrix</param>
+            public TextPanelRenderingContext(ref IMyTextPanel lcd, Vector3D viewPointDirection)
+            {
+                TextPanel = lcd;
+                ViewPoint = viewPointDirection;
+                // magic numbers for lcd margin
+                TextPanelTextureMargin = TextPanel.BlockDefinition.SubtypeId == "TransparentLCDLarge" ? 0.33f : -0.08f;
+                var screenSize = GetTextPanelSizeFromGridView(TextPanel);
+                PixelMultiplier = TextPanel.TextureSize / ((Vector2)screenSize * (2.5f - TextPanelTextureMargin));
+                float maxMult = PixelMultiplier.X > PixelMultiplier.Y ? PixelMultiplier.Y : PixelMultiplier.X;
+                PixelMultiplier = new Vector2(maxMult, maxMult);
+            }
+
+            private static Vector2I GetTextPanelSizeFromGridView(IMyTextPanel textPanel)
+            {
+                Vector3I lcdSize = textPanel.Max - textPanel.Min;
+                Vector2I screenSize = new Vector2I();
+                switch (textPanel.Orientation.Forward)
+                {
+                    case Base6Directions.Direction.Forward:
+                        screenSize = new Vector2I(lcdSize.Y, lcdSize.X);
+                        break;
+                    case Base6Directions.Direction.Backward:
+                        screenSize = new Vector2I(lcdSize.Y, lcdSize.X);
+                        break;
+                    case Base6Directions.Direction.Left:
+                        screenSize = new Vector2I(lcdSize.Z, lcdSize.Y);
+                        break;
+                    case Base6Directions.Direction.Right:
+                        screenSize = new Vector2I(lcdSize.Z, lcdSize.Y);
+                        break;
+                    case Base6Directions.Direction.Up:
+                        screenSize = new Vector2I(lcdSize.X, lcdSize.Z);
+                        break;
+                    case Base6Directions.Direction.Down:
+                        screenSize = new Vector2I(lcdSize.X, lcdSize.Z);
+                        break;
+                    default:
+                        throw new ArgumentException("Unknown orientation");
+                }
+                screenSize += new Vector2I(1, 1);
+                return screenSize;
+            }
+
+            /// <summary>
+            /// Projects the given point onto LCD screen coordinates given in pixels
+            /// </summary>
+            /// <param name="worldPoint">The point to project</param>
+            /// <returns>Screen coordinate in pixels or null if projection is not on lcd</returns>
+            public Vector2? ProjectPoint(Vector3D worldPoint)
+            {
+                Vector3D referenceWorldPosition = TextPanel.WorldMatrix.Translation;
+                // Get world direction
+                Vector3D worldDirection = worldPoint - Vector3D.Transform(ViewPoint, TextPanel.WorldMatrix);
+                // Convert worldDirection into a local direction
+                Vector3D localRayDirection = Vector3D.TransformNormal(worldDirection, MatrixD.Transpose(TextPanel.WorldMatrix));
+
+                // project the plane onto the plane
+                Vector2? projectedLocalPoint = PlaneIntersection(ViewPoint, localRayDirection);
+                if (projectedLocalPoint != null)
+                {
+                    var projectedLocalPointNonNullable = (Vector2)projectedLocalPoint;
+                    // convert it to pixels
+                    Vector2 projectedLocalPointPixels = projectedLocalPointNonNullable * PixelMultiplier * new Vector2(1, -1) + TextPanel.TextureSize / 2f;
+
+                    if (projectedLocalPointPixels.X >= 0 && projectedLocalPointPixels.Y >= 0 && projectedLocalPointPixels.X < TextPanel.SurfaceSize.X && projectedLocalPointPixels.Y < TextPanel.SurfaceSize.Y)
+                    {
+                        return projectedLocalPointPixels;
+                    }
+                }
+                return null;
+            }
+
+            /// <summary>
+            /// Calculates the intersection point from the given line and a plane with origin (0,0,0) and the normal (static)
+            /// </summary>
+            /// <param name="origin">Line origin</param>
+            /// <param name="dir">Line direction</param>
+            /// <returns>The projected point</returns>
+            private Vector2? PlaneIntersection(Vector3D origin, Vector3D dir)
+            {
+                if (dir.Z >= 0)
+                {
+                    return null;
+                }
+                var t = -(Vector3D.Dot(origin, Normal) + D) / Vector3D.Dot(dir, Normal);
+                Vector3D res = origin + t * dir;
+                return new Vector2((float)res.X, (float)res.Y);
+            }
         }
         #endregion
     }

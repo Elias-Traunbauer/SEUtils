@@ -262,7 +262,7 @@ namespace IngameScript
                 try
                 {
                     CheckSetup();
-                    if (updateSource.HasFlag(UpdateType.Update1) || updateSource.HasFlag(UpdateType.Update10) || updateSource.HasFlag(UpdateType.Update100))
+                    if ((updateSource & (UpdateType.Update1 | UpdateType.Update10 | UpdateType.Update100)) != 0)
                     {
                         var nextUp = invokeNextUpdateActions.ToArray();
                         invokeNextUpdateActions.Clear();
@@ -283,7 +283,7 @@ namespace IngameScript
                         }
                     }
 
-                    if ((updateSource.HasFlag((UpdateType)(((int)updateFreq) * 32))) || updateSource.HasFlag(UpdateType.Once) || updateSource.HasFlag(UpdateType.Trigger) || updateSource.HasFlag(UpdateType.Script) || updateSource.HasFlag(UpdateType.None)) // updateFrequency to UpdateType
+                    if ((updateSource & (UpdateType.Trigger | UpdateType.Terminal | UpdateType.Script | UpdateType.IGC | UpdateType.Once | (UpdateType)(((int)updateFreq) * 32))) != 0) // updateFrequency to UpdateType
                     {
                         return true;
                     }
@@ -296,6 +296,7 @@ namespace IngameScript
                 {
                     pbLcd.ContentType = ContentType.TEXT_AND_IMAGE;
                     pbLcd.WriteText("Exception in SEUtils caught: " + ex.Message + "\n" + ex.StackTrace);
+                    CurrentMyGridProgram.Echo(ex.Message);
                     throw ex;
                 }
             }
@@ -388,7 +389,7 @@ namespace IngameScript
             /// </summary>
             /// <param name="lcd">The lcd you want to project to</param>
             /// <param name="viewPointDirection">Direction to view from local to lcd's matrix</param>
-            public TextPanelRenderingContext(ref IMyTextPanel lcd, Vector3D viewPointDirection)
+            public TextPanelRenderingContext(IMyTextPanel lcd, Vector3D viewPointDirection)
             {
                 TextPanel = lcd;
                 ViewPoint = viewPointDirection;
@@ -461,6 +462,32 @@ namespace IngameScript
             }
 
             /// <summary>
+            /// Projects the given point onto LCD screen coordinates given in pixel without world coordinates
+            /// </summary>
+            /// <param name="worldPoint">The point to project</param>
+            /// <returns>Screen coordinate in pixels or null if projection is not on lcd</returns>
+            public static Vector2? ProjectPointLocal(Vector3D worldPoint, Vector3D viewPoint, Vector2 PixelMultiplier, Vector2 TextureSize, Vector2 SurfaceSize)
+            {
+                // Convert worldDirection into a local direction
+                Vector3D localRayDirection = worldPoint - viewPoint;
+
+                // project the plane onto the plane
+                Vector2? projectedLocalPoint = PlaneIntersectionLocal(viewPoint, localRayDirection);
+                if (projectedLocalPoint != null)
+                {
+                    var projectedLocalPointNonNullable = (Vector2)projectedLocalPoint;
+                    // convert it to pixels
+                    Vector2 projectedLocalPointPixels = projectedLocalPointNonNullable * PixelMultiplier * new Vector2(1, -1) + TextureSize / 2f;
+
+                    if (projectedLocalPointPixels.X >= 0 && projectedLocalPointPixels.Y >= 0 && projectedLocalPointPixels.X < SurfaceSize.X && projectedLocalPointPixels.Y < SurfaceSize.Y)
+                    {
+                        return projectedLocalPointPixels;
+                    }
+                }
+                return null;
+            }
+
+            /// <summary>
             /// Calculates the intersection point from the given line and a plane with origin (0,0,0) and the normal (static)
             /// </summary>
             /// <param name="origin">Line origin</param>
@@ -473,6 +500,23 @@ namespace IngameScript
                     return null;
                 }
                 var t = -(Vector3D.Dot(origin, Normal) + D) / Vector3D.Dot(dir, Normal);
+                Vector3D res = origin + t * dir;
+                return new Vector2((float)res.X, (float)res.Y);
+            }
+
+            /// <summary>
+            /// Calculates the intersection point from the given line and a plane with origin (0,0,0) and the normal (static)
+            /// </summary>
+            /// <param name="origin">Line origin</param>
+            /// <param name="dir">Line direction</param>
+            /// <returns>The projected point</returns>
+            private static Vector2? PlaneIntersectionLocal(Vector3D origin, Vector3D dir)
+            {
+                if (dir.Z >= 0)
+                {
+                    return null;
+                }
+                var t = -(Vector3D.Dot(origin, Vector3D.Backward) + D) / Vector3D.Dot(dir, Vector3D.Backward);
                 Vector3D res = origin + t * dir;
                 return new Vector2((float)res.X, (float)res.Y);
             }

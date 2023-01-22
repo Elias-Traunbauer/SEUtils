@@ -462,6 +462,31 @@ namespace IngameScript
             }
 
             /// <summary>
+            /// Projects the given local point onto LCD screen coordinates given in pixels
+            /// </summary>
+            /// <param name="worldPoint">The point to project</param>
+            /// <returns>Screen coordinate in pixels or null if projection is not on lcd</returns>
+            public Vector2? ProjectLocalPoint(Vector3D worldPoint)
+            {
+                Vector3D localRayDirection = worldPoint - ViewPoint;
+
+                // project the plane onto the plane
+                Vector2? projectedLocalPoint = PlaneIntersection(ViewPoint, localRayDirection);
+                if (projectedLocalPoint != null)
+                {
+                    var projectedLocalPointNonNullable = (Vector2)projectedLocalPoint;
+                    // convert it to pixels
+                    Vector2 projectedLocalPointPixels = projectedLocalPointNonNullable * PixelMultiplier * new Vector2(1, -1) + TextPanel.TextureSize / 2f;
+
+                    if (projectedLocalPointPixels.X >= 0 && projectedLocalPointPixels.Y >= 0 && projectedLocalPointPixels.X < TextPanel.SurfaceSize.X && projectedLocalPointPixels.Y < TextPanel.SurfaceSize.Y)
+                    {
+                        return projectedLocalPointPixels;
+                    }
+                }
+                return null;
+            }
+
+            /// <summary>
             /// Projects the given point onto LCD screen coordinates given in pixel without world coordinates
             /// </summary>
             /// <param name="worldPoint">The point to project</param>

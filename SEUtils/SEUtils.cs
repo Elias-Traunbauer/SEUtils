@@ -259,6 +259,7 @@ namespace IngameScript
             /// <returns>If you should execute your code</returns>
             public bool RuntimeUpdate(string argument, UpdateType updateSource)
             {
+                string finished = "Start";
                 try
                 {
                     CheckSetup();
@@ -270,7 +271,7 @@ namespace IngameScript
                         {
                             item();
                         }
-
+                        finished = "Executing 'next tick invokes'";
                         var actions = invokeTimeActions.Where(x => DateTime.Now >= x.datetime).Select(x => x.action).ToList();
                         foreach (var item in actions)
                         {
@@ -281,6 +282,7 @@ namespace IngameScript
                         {
                             CurrentMyGridProgram.Runtime.UpdateFrequency = UpdateFrequency.Update1 | updateFreq;
                         }
+                        finished = "Executing 'time invokes'";
                     }
 
                     if ((updateSource & (UpdateType.Trigger | UpdateType.Terminal | UpdateType.Script | UpdateType.IGC | UpdateType.Once | (UpdateType)(((int)updateFreq) * 32))) != 0) // updateFrequency to UpdateType
@@ -295,8 +297,8 @@ namespace IngameScript
                 catch (Exception ex)
                 {
                     pbLcd.ContentType = ContentType.TEXT_AND_IMAGE;
-                    pbLcd.WriteText("Exception in SEUtils caught: " + ex.Message + "\n" + ex.StackTrace);
-                    CurrentMyGridProgram.Echo(ex.Message);
+                    pbLcd.WriteText("Exception in SEUtils caught after " +  finished + ": " + ex.Message + "\n" + ex.StackTrace);
+                    CurrentMyGridProgram.Echo(ex.GetType() + " in SEUtils caught after " +  finished + ": " + ex.Message + "\n" + ex.StackTrace);
                     throw ex;
                 }
             }
@@ -547,5 +549,14 @@ namespace IngameScript
             }
         }
         #endregion
+    }
+
+    public static class Extensions
+    {
+        public static Vector2 To(this Vector2 v1, Vector2 v2) => v2 - v1;
+        public static Vector3 To(this Vector3 v1, Vector3 v2) => v2 - v1;
+        public static Vector2D To(this Vector2D v1, Vector2D v2) => v2 - v1;
+        public static Vector3D To(this Vector3D v1, Vector3D v2) => v2 - v1;
+        public static Vector2I To(this Vector2I v1, Vector2I v2) => v2 - v1;
     }
 }

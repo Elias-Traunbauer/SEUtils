@@ -28,6 +28,7 @@ namespace IngameScript
             private IMyGridTerminalSystem GridTerminalSystem;
             private MyGridProgram CurrentMyGridProgram;
             private List<Action> invokeNextUpdateActions;
+            private List<Action> invokeNextRegularUpdate;
             private List<WaitingInvokeInfo> invokeTimeActions;
             private char[] icons = new char[] { '|', '/', '-', '\\' };
             private int iconIndex = 0;
@@ -53,6 +54,7 @@ namespace IngameScript
                 updateFreq = updateFrequency;
                 coroutines = new Dictionary<int, IEnumerator>();
                 invokeNextUpdateActions = new List<Action>();
+                invokeNextRegularUpdate = new List<Action>();
                 invokeTimeActions = new List<WaitingInvokeInfo>();
                 CurrentMyGridProgram = scriptBaseClass;
                 GridTerminalSystem = CurrentMyGridProgram.GridTerminalSystem;
@@ -165,6 +167,10 @@ namespace IngameScript
                     {
                         InvokeNextTick(() => WaitingCoroutineStep(waitInstruction as WaitForConditionMet, enumeratorId));
                     }
+                    else if (waitInstruction is WaitForNextUpdate)
+                    {
+                        InvokeNextRegularUpdate(() => CoroutineStep(enumeratorId));
+                    }
                     else
                     {
                         CurrentMyGridProgram.Echo("Unknown coroutine waiting instruction");
@@ -238,6 +244,16 @@ namespace IngameScript
             }
 
             /// <summary>
+            /// Invokes the given action to be executed in the next update of this pb
+            /// </summary>
+            /// <param name="action">Action to invoke</param>
+            public void InvokeNextRegularUpdate(Action action)
+            {
+                CheckSetup();
+                invokeNextRegularUpdate.Add(action);
+            }
+
+            /// <summary>
             /// Invokes the given action to be executed after the given milliseconds passed
             /// </summary>
             /// <param name="action">Action to execute</param>
@@ -287,6 +303,12 @@ namespace IngameScript
 
                     if ((updateSource & (UpdateType.Trigger | UpdateType.Terminal | UpdateType.Script | UpdateType.IGC | UpdateType.Once | (UpdateType)(((int)updateFreq) * 32))) != 0) // updateFrequency to UpdateType
                     {
+                        var nextUp = invokeNextRegularUpdate.ToArray();
+                        invokeNextRegularUpdate.Clear();
+                        foreach (var item in nextUp)
+                        {
+                            item();
+                        }
                         return true;
                     }
                     else
@@ -322,6 +344,14 @@ namespace IngameScript
         /// Waits for the next game tick and continues the coroutine
         /// </summary>
         public class WaitForNextTick
+        {
+
+        }
+
+        /// <summary>
+        /// Waits for the next run of this pb and continues the coroutine
+        /// </summary>
+        public class WaitForNextUpdate
         {
 
         }

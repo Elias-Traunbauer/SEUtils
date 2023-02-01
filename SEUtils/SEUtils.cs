@@ -245,7 +245,7 @@ namespace IngameScript
             public void Invoke(Action action, int milliseconds)
             {
                 CheckSetup();
-                invokeTimeActions.Add(new WaitingInvokeInfo(action, DateTime.Now.AddMilliseconds(milliseconds)));
+                invokeTimeActions.Add(new WaitingInvokeInfo(action, milliseconds));
             }
             #endregion
 
@@ -272,13 +272,14 @@ namespace IngameScript
                             item();
                         }
                         finished = "Executing 'next tick invokes'";
-                        var actions = invokeTimeActions.Where(x => DateTime.Now >= x.datetime).Select(x => x.action).ToList();
+                        invokeTimeActions = invokeTimeActions.Select(x => { x.millisLeft -= (int)CurrentMyGridProgram.Runtime.TimeSinceLastRun.TotalMilliseconds; return x; }).ToList();
+                        var actions = invokeTimeActions.Where(x => x.millisLeft <= 0).Select(x => x.action).ToList();
                         foreach (var item in actions)
                         {
                             item();
                         }
-                        invokeTimeActions = invokeTimeActions.Where(x => DateTime.Now < x.datetime).ToList();
-                        if (invokeTimeActions.Any(x => (DateTime.Now - x.datetime).TotalMilliseconds < 10 * (1000 / 60)))
+                        invokeTimeActions = invokeTimeActions.Where(x => x.millisLeft > 0).ToList();
+                        if (invokeTimeActions.Any(x => x.millisLeft < 10))
                         {
                             CurrentMyGridProgram.Runtime.UpdateFrequency = UpdateFrequency.Update1 | updateFreq;
                         }
@@ -309,12 +310,12 @@ namespace IngameScript
         private class WaitingInvokeInfo
         {
             public Action action;
-            public DateTime datetime;
+            public int millisLeft;
 
-            public WaitingInvokeInfo(Action action, DateTime datetime)
+            public WaitingInvokeInfo(Action action, int millisLeft)
             {
                 this.action = action;
-                this.datetime = datetime;
+                this.millisLeft = millisLeft;
             }
         }
 
@@ -380,6 +381,7 @@ namespace IngameScript
             public Vector3D ViewPoint { get; private set; }
             public IMyTextPanel TextPanel { get; private set; }
             public Vector2 PixelMultiplier { get; private set; }
+            public Vector2I LCDBlockSize { get; private set; }
 
             private readonly Vector3D Normal = Vector3D.Backward;
             public static readonly double TextPanelThickness = 0.05f;
@@ -398,6 +400,7 @@ namespace IngameScript
                 // magic numbers for lcd margin
                 TextPanelTextureMargin = TextPanel.BlockDefinition.SubtypeId == "TransparentLCDLarge" ? 0.33f : -0.08f;
                 var screenSize = GetTextPanelSizeFromGridView(TextPanel);
+                LCDBlockSize = screenSize;
                 PixelMultiplier = TextPanel.TextureSize / ((Vector2)screenSize * (2.5f - TextPanelTextureMargin));
                 float maxMult = PixelMultiplier.X > PixelMultiplier.Y ? PixelMultiplier.Y : PixelMultiplier.X;
                 PixelMultiplier = new Vector2(maxMult, maxMult);
@@ -558,5 +561,7 @@ namespace IngameScript
         public static Vector2D To(this Vector2D v1, Vector2D v2) => v2 - v1;
         public static Vector3D To(this Vector3D v1, Vector3D v2) => v2 - v1;
         public static Vector2I To(this Vector2I v1, Vector2I v2) => v2 - v1;
+        public static Vector3I To(this Vector3I v1, Vector3I v2) => v2 - v1;
+        public static float LinearIndex(this Vector3 v) => v.X + v.Y+ v.Z;
     }
 }

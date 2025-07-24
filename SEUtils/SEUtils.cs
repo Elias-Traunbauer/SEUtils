@@ -263,6 +263,84 @@ namespace IngameScript
                 CheckSetup();
                 invokeTimeActions.Add(new WaitingInvokeInfo(action, milliseconds));
             }
+
+            /// <summary>
+            /// Gets the first block of type T on the grid and returns null if no such block is found.
+            /// </summary>
+            /// <typeparam name="T"></typeparam>
+            /// <returns></returns>
+            public T Get<T>() where T: class, IMyFunctionalBlock
+            {
+                CheckSetup();
+                var blocks = new List<T>();
+                GridTerminalSystem.GetBlocksOfType(blocks, IsInGrid);
+                if (blocks.Count == 0)
+                {
+                    return null;
+                }
+
+                if (blocks.Count > 1)
+                {
+                    // warning: multiple blocks of type T found, returning first one
+                    CurrentMyGridProgram.Echo($"Warning: Multiple blocks of type {typeof(T).Name} found on the grid. Returning the first one: {blocks[0].CustomName}");
+                }
+
+                return blocks[0];
+            }
+
+            /// <summary>
+            /// Gets the first block of type T on the grid and returns null if no such block is found.
+            /// </summary>
+            /// <typeparam name="T"></typeparam>
+            /// <returns></returns>
+            public T Get<T>(Func<T, bool> filter) where T : class, IMyFunctionalBlock
+            {
+                CheckSetup();
+                var blocks = new List<T>();
+                GridTerminalSystem.GetBlocksOfType(blocks, (x) => IsInGrid(x) && filter(x));
+                if (blocks.Count == 0)
+                {
+                    return null;
+                }
+
+                if (blocks.Count > 1)
+                {
+                    // warning: multiple blocks of type T found, returning first one
+                    CurrentMyGridProgram.Echo($"Warning: Multiple blocks of type {typeof(T).Name} found on the grid. Returning the first one: {blocks[0].CustomName}");
+                }
+
+                return blocks[0];
+            }
+
+            /// <summary>
+            /// Gets the first block of type T on the grid and throws an exception if no such block is found.
+            /// </summary>
+            /// <typeparam name="T"></typeparam>
+            /// <returns></returns>
+            /// <exception cref="Exception"></exception>
+            public T Required<T>() where T : class, IMyFunctionalBlock
+            {
+                T block = Get<T>();
+
+                if (block == null)
+                {
+                    throw new Exception($"Required block of type {typeof(T).Name} not found on the grid.");
+                }
+
+                return block;
+            }
+
+            public T Required<T>(Func<T, bool> filter) where T : class, IMyFunctionalBlock
+            {
+                T block = Get<T>(filter);
+
+                if (block == null)
+                {
+                    throw new Exception($"Required block of type {typeof(T).Name} not found on the grid.");
+                }
+
+                return block;
+            }
             #endregion
 
             #region UpdateRuntime Method
